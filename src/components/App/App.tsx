@@ -1,40 +1,44 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { fetchMovies } from '../../services/movieService';
-import type { Movie } from '../../types/movie';
+import type { Movie, MovieResponse } from '../../types/movie';
 import SearchBar from '../SearchBar/SearchBar';
 import MovieGrid from '../MovieGrid/MovieGrid';
 import Loader from '../Loader/Loader';
-import ErrorMessage from '../ErrorMessage/ErrorMessage'; 
 import MovieModal from '../MovieModal/MovieModal';
+import ReactPaginate from 'react-paginate';
 import { toast, Toaster } from 'react-hot-toast';
+import styles from './App.module.css';
 
-const App: React.FC = () => {
-  const [movies, setMovies] = useState<Movie[]>([]);
+const App = () => {
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleSearch = async (query: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const results = await fetchMovies(query);
-      if (results.length === 0) {
-        toast.error('No movies found for your request.');
-      }
-      setMovies(results);
-    } catch (err: unknown) {
-      
-      if (err instanceof Error) {
-        toast.error(`There was an error fetching the movies: ${err.message}`);
-        setError(`There was an error fetching the movies: ${err.message}`);
-      } else {
-        toast.error('Unknown error occurred.');
-        setError('Unknown error occurred.');
-      }
-    } finally {
-      setLoading(false);
+  const { data, isLoading, isError, error } = useQuery<MovieResponse, Error>({
+    queryKey: ['movies', query, page],
+    queryFn: () => fetchMovies(query, page),
+    enabled: !!query,
+  });
+
+  
+  useEffect(() => {
+    if (isError && error) {
+      toast.error(error.message || 'There was an error fetching the movies.');
+      console.error('Error:', error);
     }
+  }, [isError, error]);
+
+  
+  useEffect(() => {
+    if (data && data.results.length === 0 && query) {
+      toast.error('No movies found for your request.');
+    }
+  }, [data, query]);
+
+  const handleSearch = (searchQuery: string) => {
+    setQuery(searchQuery);
+    setPage(1);
   };
 
   const handleSelectMovie = (movie: Movie) => {
@@ -45,20 +49,39 @@ const App: React.FC = () => {
     setSelectedMovie(null);
   };
 
+  
+  const results = data?.results || [];
+  const totalPages = data?.total_pages || 0;
+
   return (
     <div>
       <Toaster />
       <SearchBar onSubmit={handleSearch} />
-      
-      {loading && <Loader />}
-      
-      
-      {error && <ErrorMessage />}
-      
-      
-      {!loading && !error && <MovieGrid movies={movies} onSelect={handleSelectMovie} />}
-      
-      {selectedMovie && <MovieModal movie={selectedMovie} onClose={handleCloseModal} />}
+
+      {isLoading && <Loader />}
+
+      {results.length > 0 && (
+        <>
+          <MovieGrid movies={results} onSelect={handleSelectMovie} />
+          {totalPages > 1 && (
+            <ReactPaginate
+              pageCount={totalPages}
+              pageRangeDisplayed={5}
+              marginPagesDisplayed={1}
+              onPageChange={({ selected }) => setPage(selected + 1)}
+              forcePage={page - 1}
+              containerClassName={styles.pagination}
+              activeClassName={styles.active}
+              nextLabel="→"
+              previousLabel="←"
+            />
+          )}
+        </>
+      )}
+
+      {selectedMovie && (
+        <MovieModal movie={selectedMovie} onClose={handleCloseModal} />
+      )}
     </div>
   );
 };
