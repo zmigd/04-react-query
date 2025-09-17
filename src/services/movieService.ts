@@ -1,28 +1,24 @@
+// services/movieService.ts
 import axios from 'axios';
-import type { MovieResponse } from '../types/movie';
+import type { Movie } from '../types/movie';
 
-const API_TOKEN = import.meta.env.VITE_TMDB_TOKEN;
-const BASE_URL = 'https://api.themoviedb.org/3';
+const API_URL = 'https://api.themoviedb.org/3/search/movie';
+const API_TOKEN = import.meta.env.VITE_API_TOKEN as string;
 
-export const fetchMovies = async (
-  query: string,
-  page: number
-): Promise<MovieResponse> => {
-  try {
-    const response = await axios.get<MovieResponse>(`${BASE_URL}/search/movie`, {
-      params: {
-        query,
-        page, 
-        language: 'en-US',
-      },
-      headers: {
-        Authorization: `Bearer ${API_TOKEN}`,
-      },
-    });
+// Локально визначаємо структуру відповіді API
+export interface MovieResponse {
+  page: number;
+  results: Movie[];
+  total_pages: number;
+  total_results: number;
+}
 
-    return response.data; 
-  } catch (error) {
-    console.error('Error fetching movies:', error);
-    throw error; 
-  }
+export const fetchMovies = async (query: string, page: number = 1): Promise<MovieResponse> => {
+  const response = await axios.get<MovieResponse>(API_URL, {
+    params: { query, page },
+    headers: {
+      Authorization: `Bearer ${API_TOKEN}`,
+    },
+  });
+  return response.data;
 };

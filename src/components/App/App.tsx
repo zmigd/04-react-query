@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchMovies } from '../../services/movieService';
-import type { Movie, MovieResponse } from '../../types/movie';
+import { fetchMovies, type MovieResponse } from '../../services/movieService';
+import type { Movie } from '../../types/movie';
 import SearchBar from '../SearchBar/SearchBar';
 import MovieGrid from '../MovieGrid/MovieGrid';
 import Loader from '../Loader/Loader';
@@ -19,6 +19,7 @@ const App = () => {
     queryKey: ['movies', query, page],
     queryFn: () => fetchMovies(query, page),
     enabled: !!query,
+    placeholderData: (previousData) => previousData, 
   });
 
   
@@ -29,7 +30,7 @@ const App = () => {
     }
   }, [isError, error]);
 
-  
+
   useEffect(() => {
     if (data && data.results.length === 0 && query) {
       toast.error('No movies found for your request.');
@@ -49,7 +50,6 @@ const App = () => {
     setSelectedMovie(null);
   };
 
-  
   const results = data?.results || [];
   const totalPages = data?.total_pages || 0;
 
